@@ -127,7 +127,7 @@ def get_application(incoming_port, ioloop=None):
     static_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
     application = tornado.web.Application([
         (r"/", IndexHandler),
-        (r"/oh-dear", SomeWebSocket),
+        (r"/dots", SomeWebSocket),
         (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": static_path}),
     ], dm=dm)
 
