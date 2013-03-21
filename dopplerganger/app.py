@@ -3,8 +3,10 @@ import errno
 import fcntl
 from functools import partial
 import json
+import logging
 import os.path
 import socket
+import sys
 
 import tornado.ioloop
 import tornado.iostream
@@ -24,23 +26,38 @@ and produces websocket messages with a format:
 }
 """
 
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logger = logging.getLogger('dopplerganger')
+
 class IndexHandler(tornado.web.RequestHandler):
     """Provides the client."""
     def get(self):
         self.write(render_template('index.tmpl'))
 
 
-class SomeWebSocket(dopplerganger.websocket.WebSocketHandler):
+class DataHandler(dopplerganger.websocket.WebSocketHandler):
     """What am I doing"""
+    def register_with_dm(self):
+        self.cb_id = self.application.settings['dm'].register_cb(self.incoming_data_callback)
+
+    def unregister_with_dm(self):
+        cb_id = getattr(self, cb_id, None)
+        if cb_id:
+            self.application.settings['dm'].unregister_cb(cb_id)
+
     def open(self):
-        def cb(x, y):
-            self.write_point(x, y)
-            self.application.settings['dm'].register_cb(cb)
-        self.application.settings['dm'].register_cb(cb)
+        self.register_with_dm()
         self.write_message("bando shibbays")
+
+    def incoming_data_callback(self, x, y):
+        self.write_point(x, y)
+        self.register_with_dm()
 
     def on_message(self, message):
         self.write_message(message)
+
+    def on_close(self):
+        self.unregister_with_dm()
 
     def write_point(self, x, y):
         self.write_message(json.dumps({
@@ -55,8 +72,8 @@ class IncomingDataManager(object):
     def __init__(self, ioloop, incoming_port):
         self.ioloop = ioloop
         self.incoming_port = incoming_port
-        self.streams = []
-        self.cb = []
+        self.cb = {}
+        self.cb_counter = 0
 
     def start(self):
         self.prepare_socket(self.incoming_port)
@@ -88,6 +105,8 @@ class IncomingDataManager(object):
                 else:
                     raise
 
+            logger.info("Incoming connection from %r", address)
+
             stream = tornado.iostream.IOStream(connection, io_loop=self.ioloop)
             connection.setblocking(0)
 
@@ -99,21 +118,30 @@ class IncomingDataManager(object):
     def stream_cb(self, data, stream):
         data = data.strip()
         try:
-            x,y = data.split("\t")
+            x, y = data.split("\t")
+            x = int(x)
+            y = int(y)
             self.pump_event(x, y)
+            logger.info("Read data point at (%s, %s)", x, y)
         except:
+            logger.warn("Invalid line: %s", data)
             pass
         finally:
             self.read_stream(stream)
 
     def register_cb(self, cb):
         """Use me"""
-        self.cb.append(cb)
+        cb_id = self.cb_counter + 1
+        self.cb[cb_id] = cb
+        return cb_id
+
+    def unregister_cb(self, cb_id):
+        del self.cb[cb_id]
 
     def pump_event(self, x, y):
         old_cbs = self.cb
-        self.cb = []
-        for cb in old_cbs:
+        self.cb = {}
+        for cb in old_cbs.values():
             cb(x, y)
 
 
@@ -127,7 +155,7 @@ def get_application(incoming_port, ioloop=None):
     static_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
     application = tornado.web.Application([
         (r"/", IndexHandler),
-        (r"/dots", SomeWebSocket),
+        (r"/dots", DataHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": static_path}),
     ], dm=dm)
 
