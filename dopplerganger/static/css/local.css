@@ -1,3 +1,34 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.bighead {
+    background-color: #ff8300;
+    color: #fff;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 5px 1px #000;
+}
+
+.bighead h1 {
+    font-size: 60px;
+    text-shadow: 0 1px 3px rgba(0,0,0,.4), 0 0 30px rgba(0,0,0,.075);
+}
+
+.footer {
+    background-color: #eaeaea;
+    color: #333;
+}
+
+/* SVG Properties */
+
+svg {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+}
+
 circle {
     fill: red;
 }
