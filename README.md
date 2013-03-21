@@ -1,12 +1,4 @@
-# Hi
+# Doppler Dart Early Warning System
 
-Let's do this?
-
-dopplerganger/
-	main.py
-	(other python)
-	static/
-		css/
-		js/
-		img/
-	templates/
+## Running
+`python -m dopplerganger.main`
