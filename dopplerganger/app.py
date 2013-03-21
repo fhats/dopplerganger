@@ -41,7 +41,7 @@ class DataHandler(dopplerganger.websocket.WebSocketHandler):
         self.cb_id = self.application.settings['dm'].register_cb(self.incoming_data_callback)
 
     def unregister_with_dm(self):
-        cb_id = getattr(self, cb_id, None)
+        cb_id = getattr(self, "cb_id", None)
         if cb_id:
             self.application.settings['dm'].unregister_cb(cb_id)
 
@@ -122,20 +122,23 @@ class IncomingDataManager(object):
             x = int(x)
             y = int(y)
             self.pump_event(x, y)
-            logger.info("Read data point at (%s, %s)", x, y)
+            logger.debug("Read data point at (%s, %s)", x, y)
         except:
             logger.warn("Invalid line: %s", data)
             pass
         finally:
-            self.read_stream(stream)
+            self.ioloop.add_callback(partial(self.read_stream, stream))
 
     def register_cb(self, cb):
         """Use me"""
-        cb_id = self.cb_counter + 1
+        self.cb_counter += 1
+        cb_id = self.cb_counter
         self.cb[cb_id] = cb
+        logger.debug("Installed callback with id %d", cb_id)
         return cb_id
 
     def unregister_cb(self, cb_id):
+        logger.debug("Uninstalled callback with id %d", cb_id)
         del self.cb[cb_id]
 
     def pump_event(self, x, y):
