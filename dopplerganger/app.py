@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os.path
+
 import tornado.ioloop
 import tornado.web
 
@@ -11,12 +13,18 @@ class IndexHandler(tornado.web.RequestHandler):
         self.write(render_template('index.tmpl'))
 
 
+#class
+
+
 def get_application(ioloop=None):
     if ioloop is None:
         ioloop = tornado.ioloop.IOLoop.instance()
 
+    static_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+
     application = tornado.web.Application([
         (r"/", IndexHandler),
+        (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": static_path}),
     ])
 
     return application
